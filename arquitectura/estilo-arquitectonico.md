@@ -1,130 +1,176 @@
-# Estilo arquitectónico
+## Diagrama de arquitectura
 
-## Arquitectura general del sistema
+# Arquitectura del sistema Marketplace
 
-El sistema sigue un **estilo arquitectónico de monolito modular**, organizado en capas:
-
-- **Capa de presentación**
-- **Capa de lógica de negocio**
-- **Capa de datos**
-
-Además, se integra con servicios externos como pasarela de pagos y servicio de envíos.
+El sistema utiliza una **arquitectura monolítica modular de tres capas**, desarrollada con Node.js 20 LTS y Express. Está organizado en cinco módulos: usuarios, vendedores, catálogo, carrito y pedidos.
 
 ## Diagrama de arquitectura
 
 ```mermaid
-flowchart TD
-
-    %% Actores
-    C[Cliente]
-    S[Seller]
-    A[Administrador]
-
-    C --> WEB[Cliente Web\nHTML / CSS / JavaScript]
-    S --> WEB
-    A --> WEB
-
-    WEB --> API[HTTPS / JSON\n/api/v1/*]
-
-    %% Backend
-    subgraph MONO[Marketplace Backend - Monolito Node.js 20 LTS + Express]
-        direction TB
-
-        MW[Middlewares Express\ncors - express.json() - auth JWT - validación - manejo de errores - logger]
-
-        API --> MW
-
-        %% Presentación
-        subgraph PRESENTACION[Capa de Presentación]
-            direction LR
-
-            subgraph MODU[Modulo Usuarios]
-                U1[usuarios.routes.js]
-                U2[usuarios.controller.js]
-                U1 --> U2
-            end
-
-            subgraph MODS[Modulo Sellers]
-                S1[sellers.routes.js]
-                S2[sellers.controller.js]
-                S1 --> S2
-            end
-
-            subgraph MODC[Modulo Catálogo]
-                C1[catalogo.routes.js]
-                C2[catalogo.controller.js]
-                C1 --> C2
-            end
-
-            subgraph MODCA[Modulo Carrito]
-                CA1[carrito.routes.js]
-                CA2[carrito.controller.js]
-                CA1 --> CA2
-            end
-
-            subgraph MODP[Modulo Pedidos]
-                P1[pedidos.routes.js]
-                P2[pedidos.controller.js]
-                P1 --> P2
-            end
-        end
-
-        MW --> U1
-        MW --> S1
-        MW --> C1
-        MW --> CA1
-        MW --> P1
-
-        %% Lógica de negocio
-        subgraph NEGOCIO[Capa de Lógica de Negocio]
-            direction LR
-            US[usuarios.service.js\nregistro, login, roles]
-            SS[sellers.service.js\nalta de tiendas, validación]
-            CS[catalogo.service.js\nproductos, categorías, stock]
-            CAS[carrito.service.js\nitems, totales]
-            PS[pedidos.service.js\ncheckout, estados, seguimiento]
-        end
-
-        U2 --> US
-        S2 --> SS
-        C2 --> CS
-        CA2 --> CAS
-        P2 --> PS
-
-        %% Comunicación entre servicios
-        US -.-> PS
-        SS -.-> PS
-        CS -.-> CAS
-        CAS -.-> PS
-
-        %% Datos
-        subgraph DATOS[Capa de Datos]
-            direction LR
-            UR[usuarios.repository.js]
-            SR[sellers.repository.js]
-            CR[catalogo.repository.js]
-            CAR[carrito.repository.js]
-            PR[pedidos.repository.js]
-        end
-
-        US --> UR
-        SS --> SR
-        CS --> CR
-        CAS --> CAR
-        PS --> PR
-
-        DBA[Acceso a datos compartido\nSequelize ORM - modelos - pool de conexiones]
-
-        UR --> DBA
-        SR --> DBA
-        CR --> DBA
-        CAR --> DBA
-        PR --> DBA
+flowchart TB
+    %% ACTORES
+    subgraph ACTORES["Usuarios del sistema"]
+        direction LR
+        CLI["Cliente"]
+        SEL["Seller"]
+        ADM["Administrador"]
     end
 
-    %% Base de datos
-    DBA --> DB[(PostgreSQL\nmarketplace_db)]
+    WEB["Cliente Web<br/>HTML / CSS / JavaScript"]
 
-    %% Sistemas externos
-    PS --> PAY[Pasarela de pagos\nCulqi / Nubiz]
-    PS --> SHIP[Servicio de envíos\nAPI del courier]
+    CLI --> WEB
+    SEL --> WEB
+    ADM --> WEB
+
+    %% BACKEND MONOLITICO
+    subgraph MONO["Marketplace Backend - Node.js + Express"]
+        direction TB
+
+        MW["Middlewares Express<br/>CORS | JSON | JWT | Validación | Errores | Logger"]
+
+        %% PRESENTACION
+        subgraph PRESENTACION["1. CAPA DE PRESENTACIÓN"]
+            direction LR
+
+            subgraph USR["Módulo usuarios"]
+                UR["usuarios.routes.js"]
+                UC["usuarios.controller.js"]
+                UR --> UC
+            end
+
+            subgraph SELL["Módulo sellers"]
+                SR["sellers.routes.js"]
+                SC["sellers.controller.js"]
+                SR --> SC
+            end
+
+            subgraph CAT["Módulo catálogo"]
+                CR["catalogo.routes.js"]
+                CC["catalogo.controller.js"]
+                CR --> CC
+            end
+
+            subgraph CART["Módulo carrito"]
+                CAR["carrito.routes.js"]
+                CAC["carrito.controller.js"]
+                CAR --> CAC
+            end
+
+            subgraph ORD["Módulo pedidos"]
+                PR["pedidos.routes.js"]
+                PC["pedidos.controller.js"]
+                PR --> PC
+            end
+        end
+
+        %% LOGICA DE NEGOCIO
+        subgraph LOGICA["2. CAPA DE LÓGICA DE NEGOCIO"]
+            direction LR
+            US["usuarios.service.js<br/>Registro, login y roles"]
+            SS["sellers.service.js<br/>Tiendas y validación"]
+            CS["catalogo.service.js<br/>Productos, categorías y stock"]
+            CAS["carrito.service.js<br/>Ítems y totales"]
+            PS["pedidos.service.js<br/>Checkout, estados, pago y envío"]
+        end
+
+        %% DATOS
+        subgraph DATOS["3. CAPA DE DATOS"]
+            direction TB
+
+            subgraph REPOS["Repositorios"]
+                direction LR
+                URepo["usuarios.repository.js"]
+                SRepo["sellers.repository.js"]
+                CRepo["catalogo.repository.js"]
+                CARepo["carrito.repository.js"]
+                PRepo["pedidos.repository.js"]
+            end
+
+            ORM["Acceso a datos compartido<br/>Sequelize ORM | Modelos | Pool de conexiones"]
+        end
+
+        %% MIDDLEWARES
+        MW --> UR
+        MW --> SR
+        MW --> CR
+        MW --> CAR
+        MW --> PR
+
+        %% CONTROLADORES A SERVICIOS
+        UC --> US
+        SC --> SS
+        CC --> CS
+        CAC --> CAS
+        PC --> PS
+
+        %% SERVICIOS A REPOSITORIOS
+        US --> URepo
+        SS --> SRepo
+        CS --> CRepo
+        CAS --> CARepo
+        PS --> PRepo
+
+        %% REPOSITORIOS A ORM
+        URepo --> ORM
+        SRepo --> ORM
+        CRepo --> ORM
+        CARepo --> ORM
+        PRepo --> ORM
+
+        %% COMUNICACION ENTRE MODULOS
+        PS -.-> US
+        PS -.-> CS
+        PS -.-> CAS
+        CS -.-> SS
+    end
+
+    %% BASE DE DATOS
+    DB[("PostgreSQL<br/>marketplace_db")]
+
+    %% SERVICIOS EXTERNOS
+    PAGOS["Pasarela de pagos<br/>Culqi / Niubiz"]
+    ENVIOS["Servicio de envíos<br/>API del courier"]
+
+    %% CONEXIONES EXTERNAS
+    WEB -->|"HTTPS / JSON"| MW
+    ORM -->|"SQL / TCP 5432"| DB
+    PS -->|"HTTPS / REST"| PAGOS
+    PS -->|"HTTPS / REST"| ENVIOS
+
+    %% ESTILOS
+    classDef actor fill:#ffffff,stroke:#777,color:#222
+    classDef middleware fill:#dae5fb,stroke:#91aad4,color:#222
+    classDef presentation fill:#edf3ff,stroke:#8ca8d4,color:#222
+    classDef service fill:#deedcf,stroke:#a5c68c,color:#222
+    classDef repository fill:#fff9e9,stroke:#dbba65,color:#222
+    classDef orm fill:#f8e8cd,stroke:#d5ac65,color:#222
+    classDef external fill:#eeeeee,stroke:#888,color:#222
+
+    class CLI,SEL,ADM actor
+    class MW middleware
+    class UR,UC,SR,SC,CR,CC,CAR,CAC,PR,PC presentation
+    class US,SS,CS,CAS,PS service
+    class URepo,SRepo,CRepo,CARepo,PRepo repository
+    class ORM orm
+    class PAGOS,ENVIOS external
+
+    style MONO fill:#ffffff,stroke:#555,stroke-width:2px,stroke-dasharray:7 5
+    style PRESENTACION fill:#e7effb,stroke:#a5b8d4
+    style LOGICA fill:#edf5e7,stroke:#a3bf91
+    style DATOS fill:#fff4dd,stroke:#d6bb83
+```
+
+
+# Estilo arquitectónico
+
+**Estilo seleccionado:** Monolito modular con arquitectura en capas.
+
+Todo el backend se ejecuta como una sola aplicación (un solo proceso y un solo despliegue), organizada en módulos independientes y en tres capas: presentación, lógica de negocio y datos. Esta decisión responde a los drivers DA01 (Escalabilidad) y DA06 (Mantenibilidad), y está registrada en ADR-001.
+
+
+## Reglas de la arquitectura
+
+1. Cada capa solo invoca a la capa inmediatamente inferior.
+2. Un módulo no accede al repository ni a las tablas de otro módulo.
+3. La comunicación entre módulos se hace llamando a su service.
+4. Todo se ejecuta en un único proceso Node.js con una única base de datos.
